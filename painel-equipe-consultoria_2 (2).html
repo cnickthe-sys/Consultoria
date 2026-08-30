@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNDECI 360° — Painel de Acompanhamento de Equipe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#F3F8FD;
+    --ink-panel:#FFFFFF;
+    --ink-panel-2:#EAF3FB;
+    --ink-line:#CFE1F0;
+    --paper:#EAF3FB;
+    --paper-dim:#CFE1F0;
+    --paper-ink:#0B2545;
+    --gold:#1B5FA8;
+    --gold-soft:#4C8FD1;
+    --teal:#2E5C94;
+    --coral:#6FA8DC;
+    --text-hi:#0B2545;
+    --text-mid:#3E6690;
+    --text-low:#7C97AE;
+    --radius:2px;
+    --serif:'Fraunces', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+    --mono:'IBM Plex Mono', 'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, #DCEBF9 0%, transparent 55%),
+      var(--ink);
+    color:var(--text-hi);
+    font-family:var(--sans);
+    min-height:100vh;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  button{font-family:var(--sans);}
+  ::selection{background:var(--gold);color:var(--ink);}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+
+  .redacted-rule{
+    display:flex;gap:6px;align-items:center;margin-bottom:10px;
+  }
+  .redacted-rule span{
+    display:block;height:9px;background:var(--ink-line);border-radius:1px;
+  }
+  .redacted-rule span:nth-child(1){width:34px;}
+  .redacted-rule span:nth-child(2){width:14px;background:var(--gold-soft);opacity:.55;}
+  .redacted-rule span:nth-child(3){width:22px;}
+
+  header.topbar{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    padding:16px clamp(16px,4vw,48px);
+    border-bottom:1px solid var(--ink-line);
+    position:sticky;top:0;z-index:20;
+    background:rgba(16,24,32,.92);backdrop-filter:blur(6px);
+  }
+  .brand{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .brand .name{
+    font-family:var(--serif);font-weight:700;font-size:19px;letter-spacing:.3px;
+    color:#4C8FD1;
+  }
+  .brand .name em{font-style:normal;color:var(--gold);}
+  .brand .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;color:var(--text-low);text-transform:uppercase;}
+  .whoami{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--text-mid);
+  }
+  .whoami .tag{
+    border:1px solid var(--ink-line);padding:4px 9px;border-radius:var(--radius);
+    color:var(--gold-soft);letter-spacing:.5px;
+  }
+  .btn-ghost{
+    background:none;border:1px solid var(--ink-line);color:var(--text-mid);
+    padding:9px 12px;font-size:12px;border-radius:var(--radius);cursor:pointer;
+    font-family:var(--mono);letter-spacing:.4px;min-height:38px;
+  }
+  .btn-ghost:hover{border-color:var(--gold-soft);color:var(--gold-soft);}
+
+  main{max-width:1080px;margin:0 auto;padding:clamp(28px,5vw,64px) clamp(18px,4vw,48px) 90px;}
+  .screen{display:none;}
+  .screen.active{display:block;animation:rise .5s ease both;}
+  @media (prefers-reduced-motion: reduce){ .screen.active{animation:none;} }
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- IDENTIFY SCREEN ---------- */
+  .hero-line{
+    font-family:var(--serif);font-weight:600;
+    font-size:clamp(28px,4.2vw,44px);line-height:1.1;max-width:680px;margin:6px 0 8px;
+  }
+  .hero-line em{font-style:italic;color:var(--gold);}
+  .hero-sub{color:var(--text-mid);max-width:560px;font-size:15px;margin-bottom:44px;}
+
+  .card{
+    background:var(--ink-panel);
+    border:1px solid var(--ink-line);
+    border-radius:var(--radius);
+    position:relative;
+  }
+  .id-wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:0;max-width:840px;}
+  @media (max-width:720px){.id-wrap{grid-template-columns:1fr;}}
+  .id-card{padding:clamp(24px,4vw,42px);}
+  .id-card .kicker{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--gold-soft);text-transform:uppercase;margin-bottom:14px;}
+  label{display:block;font-size:13px;color:var(--text-mid);margin-bottom:7px;font-family:var(--mono);letter-spacing:.3px;}
+  select, textarea{
+    width:100%;background:var(--ink-panel-2);border:1px solid var(--ink-line);
+    color:var(--text-hi);padding:12px 13px;border-radius:var(--radius);font-size:14.5px;
+    font-family:var(--sans);
+  }
+  select:focus, textarea:focus{border-color:var(--gold-soft);}
+  .id-preview{
+    margin-top:18px;padding:14px 16px;border:1px dashed var(--ink-line);border-radius:var(--radius);
+    font-family:var(--mono);font-size:12.5px;color:var(--text-low);min-height:66px;
+    display:flex;flex-direction:column;justify-content:center;gap:4px;
+  }
+  .id-preview .filled b{color:var(--text-hi);font-weight:500;}
+  .id-preview .filled .role-chefe{color:var(--gold);}
+  .id-preview .filled .role-func{color:var(--teal);}
+  .btn-primary{
+    margin-top:20px;width:100%;background:var(--gold);color:#231B0C;border:none;
+    padding:13px 16px;font-weight:600;font-size:14px;border-radius:var(--radius);cursor:pointer;
+    letter-spacing:.3px;transition:transform .15s ease, background .15s ease;
+  }
+  .btn-primary:disabled{background:var(--ink-line);color:var(--text-low);cursor:not-allowed;}
+  .btn-primary:not(:disabled):hover{background:var(--gold-soft);}
+  .btn-primary:not(:disabled):active{transform:scale(.99);}
+
+  .stamp-panel{
+    background:
+      repeating-linear-gradient(135deg, rgba(27,95,168,.06) 0 2px, transparent 2px 26px),
+      var(--ink-panel-2);
+    border-left:1px solid var(--ink-line);
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:30px;
+  }
+  .stamp{color:var(--gold);opacity:.82;transform:rotate(-9deg);}
+  .stamp-caption{font-family:var(--mono);font-size:11px;color:var(--text-low);text-align:center;max-width:200px;letter-spacing:.3px;}
+
+  /* ---------- SURVEY SCREEN ---------- */
+  .setor-eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .setor-eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);}
+  .setor-eyebrow span{font-family:var(--mono);font-size:11.5px;letter-spacing:2px;color:var(--text-mid);text-transform:uppercase;}
+
+  .survey-card{max-width:760px;padding:clamp(22px,4vw,40px);position:relative;overflow:hidden;}
+  .survey-card .stamp-corner{position:absolute;top:-18px;right:-18px;width:110px;height:110px;color:var(--gold);opacity:.14;transform:rotate(-9deg);}
+  .qgroup{padding:20px 0;border-bottom:1px solid var(--ink-line);}
+  .qgroup:first-of-type{padding-top:6px;}
+  .qgroup:last-of-type{border-bottom:none;}
+  .qtext{font-family:var(--serif);font-size:17px;font-weight:500;margin-bottom:14px;max-width:520px;}
+  .scale{display:flex;gap:8px;flex-wrap:wrap;}
+  .scale button{
+    width:44px;height:44px;border-radius:50%;border:1px solid var(--ink-line);
+    background:transparent;color:var(--text-mid);cursor:pointer;font-family:var(--mono);font-size:14px;
+    transition:all .15s ease;
+  }
+  .scale button:hover{border-color:var(--gold-soft);color:var(--gold-soft);}
+  .scale button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#231B0C;font-weight:600;}
+  .scale-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:10.5px;color:var(--text-low);max-width:280px;font-family:var(--mono);}
+
+  .comment-block{margin-top:26px;}
+  .comment-block textarea{min-height:90px;resize:vertical;font-family:var(--sans);font-size:14px;}
+  .char-count{text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--text-low);margin-top:4px;}
+
+  .submit-row{margin-top:26px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .submit-row .btn-primary{width:auto;margin-top:0;padding:13px 26px;}
+  .submit-note{font-size:12px;color:var(--text-low);font-family:var(--mono);}
+  .form-error{color:var(--coral);font-size:13px;font-family:var(--mono);margin-top:10px;}
+
+  details.privacy-note{max-width:760px;margin-top:22px;color:var(--text-mid);font-size:13px;}
+  details.privacy-note summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;letter-spacing:1px;color:var(--gold-soft);text-transform:uppercase;}
+  details.privacy-note p{margin:12px 0 0;line-height:1.6;max-width:600px;}
+
+  /* ---------- THANKS SCREEN ---------- */
+  .thanks-wrap{display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 0;}
+  .thanks-wrap .stamp{width:160px;height:160px;animation:stampIn .5s cubic-bezier(.2,1.4,.4,1) both;}
+  @media (prefers-reduced-motion: reduce){ .thanks-wrap .stamp{animation:none;} }
+  @keyframes stampIn{0%{opacity:0;transform:scale(2.2) rotate(-9deg);}70%{opacity:1;}100%{opacity:.82;transform:scale(1) rotate(-9deg);}}
+  .thanks-title{font-family:var(--serif);font-size:26px;margin:22px 0 8px;}
+  .thanks-sub{color:var(--text-mid);max-width:420px;font-size:14.5px;}
+
+  /* ---------- DASHBOARD ---------- */
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 30px;}
+  @media (max-width:640px){.kpi-row{grid-template-columns:1fr;}}
+  .kpi{padding:18px 20px;}
+  .kpi .label{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;color:var(--text-low);text-transform:uppercase;margin-bottom:8px;}
+  .kpi .value{font-family:var(--serif);font-size:30px;color:var(--text-hi);}
+  .kpi .value.gold{color:var(--gold);}
+  .kpi .value.teal{color:var(--teal);}
+
+  .chart-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-bottom:16px;}
+  @media (max-width:760px){.chart-grid{grid-template-columns:1fr;}}
+  .chart-card{padding:20px 22px 10px;}
+  .chart-card h3{font-family:var(--serif);font-weight:600;font-size:16px;margin:0 0 4px;}
+  .chart-card .hint{font-size:12px;color:var(--text-low);margin-bottom:10px;}
+  .chart-holder{position:relative;height:230px;}
+  .chart-holder.tall{height:230px;}
+
+  .comments-card{padding:22px;margin-top:16px;}
+  .comments-card h3{font-family:var(--serif);font-size:16px;margin:0 0 14px;}
+  .comment-item{
+    background:var(--paper);color:var(--paper-ink);border-radius:1px;
+    padding:14px 16px;margin-bottom:10px;font-size:13.5px;font-style:italic;position:relative;
+  }
+  .comment-item .meta{display:block;margin-top:8px;font-family:var(--mono);font-style:normal;font-size:10.5px;color:#5B7C9A;letter-spacing:.3px;}
+  .empty-comments{color:var(--text-low);font-size:13px;font-family:var(--mono);}
+
+  .locked{
+    padding:44px 30px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;
+  }
+  .locked .lock-icon{color:var(--gold);opacity:.7;}
+  .locked h3{font-family:var(--serif);font-size:19px;margin:0;}
+  .locked p{color:var(--text-mid);font-size:13.5px;max-width:420px;margin:0;}
+  .locked .progress{font-family:var(--mono);font-size:12px;color:var(--gold-soft);letter-spacing:.5px;}
+
+  .state-msg{font-family:var(--mono);font-size:12.5px;color:var(--text-low);padding:20px 0;}
+  .refresh-row{display:flex;justify-content:flex-end;margin-bottom:6px;}
+
+  /* ---------- NAV ROW ---------- */
+  .nav-row{display:flex;gap:10px;margin-bottom:24px;}
+
+  /* ---------- MENU SCREEN ---------- */
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:820px;margin-top:8px;}
+  @media (max-width:640px){.menu-grid{grid-template-columns:1fr;}}
+  button.menu-card{
+    display:block;width:100%;margin:0;text-align:left;font-family:inherit;color:inherit;
+    cursor:pointer;appearance:none;-webkit-appearance:none;
+    padding:30px 26px;transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  button.menu-card:hover{border-color:var(--gold-soft);transform:translateY(-2px);box-shadow:0 8px 20px rgba(27,95,168,.08);}
+  .menu-card .icon{color:var(--gold);margin-bottom:18px;}
+  .menu-card h3{font-family:var(--serif);font-weight:600;font-size:19px;margin:0 0 8px;color:var(--text-hi);}
+  .menu-card p{font-size:13.5px;color:var(--text-mid);margin:0;min-height:36px;}
+  .menu-card .arrow{margin-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--gold-soft);letter-spacing:.5px;}
+
+  /* ---------- SENHA OPCIONAL DO PERFIL ---------- */
+  .password-row{max-width:820px;margin-top:22px;display:flex;justify-content:flex-start;}
+  .icon-btn{
+    display:flex;align-items:center;gap:9px;background:none;border:1px dashed var(--ink-line);
+    color:var(--text-mid);padding:11px 16px;border-radius:var(--radius);cursor:pointer;
+    font-family:var(--mono);font-size:12px;letter-spacing:.3px;transition:border-color .15s ease, color .15s ease;
+    text-align:left;white-space:normal;min-height:44px;
+  }
+  .icon-btn:hover{border-color:var(--gold-soft);color:var(--gold-soft);}
+  .icon-btn svg{color:var(--gold-soft);flex-shrink:0;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(11,37,69,.55);backdrop-filter:blur(2px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-card{width:100%;max-width:400px;max-height:90vh;overflow-y:auto;padding:clamp(22px,4vw,32px);}
+  .modal-card h3{font-family:var(--serif);font-weight:600;font-size:19px;margin:0 0 8px;}
+  .modal-card .modal-sub{font-size:13px;color:var(--text-mid);margin:0 0 20px;line-height:1.5;}
+  .modal-card .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .modal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;}
+  .modal-actions .btn-primary{width:auto;margin-top:0;padding:11px 18px;}
+
+  /* ---------- TASKS: EMPLOYEE COLUMNS ---------- */
+  .task-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:10px;}
+  @media (max-width:860px){.task-cols{grid-template-columns:1fr;}}
+  .task-col-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .task-col-head h3{font-family:var(--serif);font-weight:600;font-size:15.5px;margin:0;}
+  .task-col-head .count{font-family:var(--mono);font-size:11px;color:var(--text-mid);background:var(--ink-panel-2);padding:2px 9px;border-radius:10px;}
+
+  .task-card{padding:16px 18px;margin-bottom:12px;}
+  .task-card h4{font-family:var(--sans);font-weight:600;font-size:14.5px;margin:8px 0 6px;color:var(--text-hi);}
+  .task-card p.desc{font-size:12.5px;color:var(--text-mid);margin:0 0 10px;line-height:1.5;}
+  .task-card .prazo{font-family:var(--mono);font-size:11px;color:var(--gold-soft);letter-spacing:.3px;}
+  .task-card .prazo.atrasado{color:var(--text-hi);font-weight:700;}
+  .task-card .field{display:flex;flex-direction:column;gap:6px;}
+  .task-card .field label{margin-bottom:0;}
+  .task-card .task-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .task-card .task-actions button{
+    font-family:var(--mono);font-size:11px;background:none;border:1px solid var(--ink-line);
+    color:var(--text-mid);padding:7px 11px;border-radius:var(--radius);cursor:pointer;
+  }
+  .task-card .task-actions button:hover{border-color:var(--gold-soft);color:var(--gold-soft);}
+  .task-card .task-actions button.primary{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .task-card .task-actions button.primary:hover{background:var(--gold-soft);}
+
+  .status-badge{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.6px;padding:3px 8px;border-radius:10px;text-transform:uppercase;}
+  .status-badge.pendente{background:var(--ink-panel-2);color:var(--text-mid);border:1px solid var(--ink-line);}
+  .status-badge.incompleta{background:#CFE1F0;color:var(--gold);border:1px solid #9EC3E4;}
+  .status-badge.completa{background:var(--gold);color:#fff;}
+
+  .empty-col{font-family:var(--mono);font-size:12px;color:var(--text-low);padding:14px 0;}
+
+  /* ---------- TASKS: CHEFE AGENDA ---------- */
+  .agenda-section{margin-top:34px;}
+  .agenda-section:first-of-type{margin-top:10px;}
+  .agenda-section h2{font-family:var(--serif);font-weight:600;font-size:20px;margin:0 0 4px;}
+  .agenda-section .sub{font-size:13px;color:var(--text-mid);margin:0 0 16px;}
+
+  .task-form{padding:22px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:end;}
+  @media (max-width:820px){.task-form{grid-template-columns:1fr 1fr;}}
+  @media (max-width:480px){.task-form{grid-template-columns:1fr;}}
+  .task-form .field{display:flex;flex-direction:column;gap:6px;}
+  .task-form .field.wide{grid-column:span 2;}
+  @media (max-width:480px){.task-form .field.wide{grid-column:span 1;}}
+  .task-form button{grid-column:1/-1;}
+  input[type="text"], input[type="date"]{
+    width:100%;background:var(--ink-panel-2);border:1px solid var(--ink-line);
+    color:var(--text-hi);padding:11px 12px;border-radius:var(--radius);font-size:13.5px;font-family:var(--sans);
+  }
+  input[type="text"]:focus, input[type="date"]:focus{border-color:var(--gold-soft);}
+
+  .assignee-group{margin-bottom:24px;}
+  .assignee-group h4{font-family:var(--mono);font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold-soft);margin:0 0 12px;}
+  .assignee-tasks{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+
+  footer{
+    text-align:center;padding:30px 20px;color:var(--text-low);font-family:var(--mono);font-size:11px;
+    border-top:1px solid var(--ink-line);letter-spacing:.4px;
+  }
+
+  input[type="text"], input[type="date"], input[type="password"]{
+    width:100%;background:var(--ink-panel-2);border:1px solid var(--ink-line);
+    color:var(--text-hi);padding:11px 12px;border-radius:var(--radius);font-size:13.5px;font-family:var(--sans);
+    min-height:44px;
+  }
+  input[type="text"]:focus, input[type="date"]:focus, input[type="password"]:focus{border-color:var(--gold-soft);}
+
+  /* ---------- RESPONSIVO GERAL: CELULAR E DESKTOP ---------- */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  html, body{overflow-x:hidden;width:100%;}
+  img, svg, canvas{max-width:100%;}
+  button, a, .scale button, .task-actions button, .menu-card, .icon-btn{-webkit-tap-highlight-color:transparent;}
+
+  /* toques confortáveis em telas de toque */
+  .task-card .task-actions button, .btn-ghost, .icon-btn{min-height:40px;}
+
+  @media (max-width:640px){
+    main{padding-left:16px;padding-right:16px;}
+    .brand .name{font-size:17px;}
+    .hero-line{font-size:clamp(24px,7vw,32px);}
+    .kpi-row{gap:10px;}
+    .task-form{padding:18px;}
+  }
+
+  /* evita zoom automático ao focar campos no iOS (exige fonte >=16px) */
+  @media (max-width:600px){
+    select, textarea, input[type="text"], input[type="date"], input[type="password"]{
+      font-size:16px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="redacted-rule"><span></span><span></span><span></span></div>
+    <div class="name">SYNDECI 360°</div>
+    <div class="sub">Painel de Acompanhamento de Equipe</div>
+  </div>
+  <div class="whoami" id="whoamiBox" style="display:none;">
+    <span class="tag" id="whoamiTag">—</span>
+    <button class="btn-ghost" id="btnLogout">Trocar identificação</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===================== SCREEN 1: IDENTIFICAÇÃO ===================== -->
+  <section class="screen active" id="screen-identify">
+    <h1 class="hero-line">Antes de tudo, <em>quem é você</em> hoje?</h1>
+    <p class="hero-sub">Selecione seu nome para entrar no painel. A partir do seu cargo, o sistema abre a visão certa: gestores acompanham o clima do setor, e o time avalia de forma anônima como está se sentindo.</p>
+
+    <div class="card id-wrap">
+      <div class="id-card">
+        <div class="kicker">Identificação</div>
+        <label for="employeeSelect">Nome do funcionário</label>
+        <select id="employeeSelect">
+          <option value="" selected disabled>Selecione seu nome…</option>
+        </select>
+
+        <div class="id-preview" id="idPreview">
+          <span>Aguardando seleção…</span>
+        </div>
+
+        <button class="btn-primary" id="btnEnter" disabled>Entrar no painel →</button>
+      </div>
+      <div class="stamp-panel">
+        <svg class="stamp" viewBox="0 0 200 200" width="120" height="120" aria-hidden="true">
+          <defs>
+            <filter id="inkTexture1" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/>
+            </filter>
+            <path id="cpTop1" d="M 100,100 m -76,0 a 76,76 0 1,1 152,0" fill="none"/>
+            <path id="cpBot1" d="M 100,100 m 76,0 a 76,76 0 1,1 -152,0" fill="none"/>
+          </defs>
+          <g filter="url(#inkTexture1)" fill="none" stroke="currentColor">
+            <circle cx="100" cy="100" r="92" stroke-width="3"/>
+            <circle cx="100" cy="100" r="80" stroke-width="1.4"/>
+            <text font-size="12.5" letter-spacing="3" fill="currentColor" stroke="none">
+              <textPath href="#cpTop1" startOffset="50%" text-anchor="middle">CONFIDENCIAL</textPath>
+            </text>
+            <text font-size="12.5" letter-spacing="3" fill="currentColor" stroke="none">
+              <textPath href="#cpBot1" startOffset="50%" text-anchor="middle">RESPOSTA ANÔNIMA</textPath>
+            </text>
+            <text x="100" y="96" font-size="16" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">100%</text>
+            <text x="100" y="115" font-size="10.5" letter-spacing="2" text-anchor="middle" fill="currentColor" stroke="none">ANÔNIMO</text>
+          </g>
+        </svg>
+        <p class="stamp-caption">Nenhuma avaliação de equipe é vinculada a quem respondeu. Só o setor e as notas são guardados.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 1.2: VERIFICAÇÃO DE SENHA ===================== -->
+  <section class="screen" id="screen-password-check">
+    <div class="nav-row"><button class="btn-ghost" id="btnPwCheckBack">← Trocar identificação</button></div>
+    <h1 class="hero-line">Digite sua <em>senha</em></h1>
+    <p class="hero-sub">Este perfil está protegido por uma senha opcional definida por quem o usa. Digite-a para continuar.</p>
+    <div class="card" style="max-width:420px;padding:clamp(22px,4vw,32px);">
+      <form id="pwCheckForm" novalidate>
+        <div class="field" style="margin-bottom:16px;"><label for="pwCheckInput">Senha</label><input type="password" id="pwCheckInput"></div>
+        <button type="submit" class="btn-primary">Entrar →</button>
+        <div class="form-error" id="pwCheckError" style="display:none;"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 1.5: MENU PRINCIPAL ===================== -->
+  <section class="screen" id="screen-menu">
+    <div class="nav-row"><button class="btn-ghost" id="btnMenuBack">← Trocar identificação</button></div>
+    <div class="setor-eyebrow"><span class="dot" style="background:var(--gold);"></span><span id="menuSetorLabel">Setor</span></div>
+    <h1 class="hero-line">Olá, <em id="menuNome">—</em>. O que você quer abrir?</h1>
+    <p class="hero-sub" id="menuSub">Escolha uma das opções abaixo.</p>
+
+    <div class="menu-grid">
+      <button type="button" class="card menu-card" id="cardEquipe">
+        <svg class="icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 20v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <h3>Painel de Acompanhamento de Equipe</h3>
+        <p id="cardEquipeDesc">Veja o clima do setor.</p>
+        <div class="arrow">Abrir →</div>
+      </button>
+      <button type="button" class="card menu-card" id="cardFuncoes">
+        <svg class="icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h3>Minhas Funções</h3>
+        <p id="cardFuncoesDesc">Acompanhe suas tarefas.</p>
+        <div class="arrow">Abrir →</div>
+      </button>
+    </div>
+
+    <div class="password-row">
+      <button type="button" class="icon-btn" id="btnPasswordIcon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>
+        <span id="passwordIconLabel">Definir senha do perfil (opcional)</span>
+      </button>
+    </div>
+  </section>
+  <section class="screen" id="screen-survey">
+    <div class="nav-row"><button class="btn-ghost" id="btnSurveyBack">← Voltar ao menu</button></div>
+    <div class="setor-eyebrow"><span class="dot"></span><span id="surveySetorLabel">Setor</span></div>
+    <h1 class="hero-line">Como está o seu <em>sentimento</em> com o time?</h1>
+    <p class="hero-sub">Responda com sinceridade — suas respostas entram no setor de forma agregada e anônima, sem qualquer identificação.</p>
+
+    <div class="card survey-card">
+      <svg class="stamp-corner" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" stroke-width="6"/>
+      </svg>
+      <form id="surveyForm">
+        <div id="questionsHolder"></div>
+
+        <div class="comment-block">
+          <label for="commentInput">Quer registrar algo em palavras? (opcional)</label>
+          <textarea id="commentInput" maxlength="280" placeholder="Um comentário livre, sem se identificar…"></textarea>
+          <div class="char-count"><span id="charCount">0</span>/280</div>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="btn-primary" id="btnSubmitSurvey" disabled>Enviar avaliação anônima</button>
+          <span class="submit-note" id="submitNote">0 de 6 respondidas</span>
+        </div>
+        <div class="form-error" id="surveyError" style="display:none;"></div>
+      </form>
+    </div>
+
+    <details class="privacy-note">
+      <summary>Como o anonimato é garantido</summary>
+      <p>Sua resposta é salva junto com as de todo o setor, sem nome, e-mail ou qualquer identificador de quem respondeu. O gestor só consegue ver resultados quando o setor tem no mínimo 3 respostas registradas — assim, nunca é possível deduzir a opinião de uma pessoa específica olhando os números.</p>
+    </details>
+  </section>
+
+  <!-- ===================== SCREEN 3: AGRADECIMENTO ===================== -->
+  <section class="screen" id="screen-thanks">
+    <div class="thanks-wrap">
+      <svg class="stamp" viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <filter id="inkTexture2" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/>
+          </filter>
+          <path id="cpTop2" d="M 100,100 m -76,0 a 76,76 0 1,1 152,0" fill="none"/>
+          <path id="cpBot2" d="M 100,100 m 76,0 a 76,76 0 1,1 -152,0" fill="none"/>
+        </defs>
+        <g filter="url(#inkTexture2)" fill="none" stroke="currentColor">
+          <circle cx="100" cy="100" r="92" stroke-width="3"/>
+          <circle cx="100" cy="100" r="80" stroke-width="1.4"/>
+          <text font-size="12.5" letter-spacing="3" fill="currentColor" stroke="none">
+            <textPath href="#cpTop2" startOffset="50%" text-anchor="middle">CONFIDENCIAL</textPath>
+          </text>
+          <text font-size="12.5" letter-spacing="3" fill="currentColor" stroke="none">
+            <textPath href="#cpBot2" startOffset="50%" text-anchor="middle">RESPOSTA ANÔNIMA</textPath>
+          </text>
+          <text x="100" y="96" font-size="16" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">100%</text>
+          <text x="100" y="115" font-size="10.5" letter-spacing="2" text-anchor="middle" fill="currentColor" stroke="none">ANÔNIMO</text>
+        </g>
+      </svg>
+      <div class="thanks-title">Avaliação registrada.</div>
+      <p class="thanks-sub">Obrigado por responder com sinceridade. Sua opinião foi arquivada junto com a do restante do setor — sem nenhum vínculo com o seu nome.</p>
+      <button class="btn-ghost" id="btnBackHome" style="margin-top:22px;">Voltar ao menu</button>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 4: PAINEL DO CHEFE ===================== -->
+  <section class="screen" id="screen-dashboard">
+    <div class="nav-row"><button class="btn-ghost" id="btnDashboardBack">← Voltar ao menu</button></div>
+    <div class="setor-eyebrow"><span class="dot" style="background:var(--gold);"></span><span id="dashSetorLabel">Setor</span></div>
+    <h1 class="hero-line">Clima do <em>seu setor</em></h1>
+    <p class="hero-sub">Resultados agregados e anônimos das avaliações enviadas pela sua equipe.</p>
+
+    <div id="dashboardContent">
+      <div class="state-msg">Carregando respostas do setor…</div>
+    </div>
+  </section>
+
+  <!-- ===================== SCREEN 5: MINHAS FUNÇÕES ===================== -->
+  <section class="screen" id="screen-tasks">
+    <div class="nav-row"><button class="btn-ghost" id="btnTasksBack">← Voltar ao menu</button></div>
+    <div class="setor-eyebrow"><span class="dot" style="background:var(--gold);"></span><span id="tasksSetorLabel">Setor</span></div>
+    <h1 class="hero-line" id="tasksTitle">Minhas funções</h1>
+    <p class="hero-sub" id="tasksSub">Acompanhe suas tarefas.</p>
+
+    <div id="tasksContent">
+      <div class="state-msg">Carregando tarefas…</div>
+    </div>
+  </section>
+
+</main>
+
+<div class="modal-overlay" id="pwModalOverlay">
+  <div class="card modal-card">
+    <h3>Senha do perfil</h3>
+    <p class="modal-sub" id="pwModalSub">Defina uma senha opcional para proteger seu perfil. Ninguém mais poderá abrir seu painel sem ela.</p>
+    <form id="pwSetForm" novalidate>
+      <div class="field"><label for="pwNew">Nova senha</label><input type="password" id="pwNew"></div>
+      <div class="field"><label for="pwConfirm">Confirmar senha</label><input type="password" id="pwConfirm"></div>
+      <div class="form-error" id="pwSetError" style="display:none;"></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-primary">Salvar senha</button>
+        <button type="button" class="btn-ghost" id="btnPwRemove" style="display:none;">Remover senha</button>
+        <button type="button" class="btn-ghost" id="btnPwCancel">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer>SYNDECI 360° · PAINEL INTERNO · DADOS AGREGADOS E ANÔNIMOS · Nº PROCESSO 004/2026</footer>
+
+<script>
+(function(){
+
+/* ---------------------------------------------------------------
+   1) QUADRO DE FUNCIONÁRIOS (dados de exemplo)
+--------------------------------------------------------------- */
+const roster = [
+  {id:'e01', nome:'Fernanda Duarte', cargo:'chefe', setor:'Estratégia Corporativa'},
+  {id:'e02', nome:'Rafael Nogueira', cargo:'funcionario', setor:'Estratégia Corporativa'},
+  {id:'e03', nome:'Beatriz Salles', cargo:'funcionario', setor:'Estratégia Corporativa'},
+  {id:'e04', nome:'Igor Andrade', cargo:'funcionario', setor:'Estratégia Corporativa'},
+  {id:'e05', nome:'Marina Prado', cargo:'funcionario', setor:'Estratégia Corporativa'},
+
+  {id:'e06', nome:'Diego Martins', cargo:'chefe', setor:'Tecnologia & Dados'},
+  {id:'e07', nome:'Camila Rezende', cargo:'funcionario', setor:'Tecnologia & Dados'},
+  {id:'e08', nome:'Thiago Bastos', cargo:'funcionario', setor:'Tecnologia & Dados'},
+  {id:'e09', nome:'Ana Luiza Ferraz', cargo:'funcionario', setor:'Tecnologia & Dados'},
+  {id:'e10', nome:'Pedro Villela', cargo:'funcionario', setor:'Tecnologia & Dados'},
+
+  {id:'e11', nome:'Helena Bittencourt', cargo:'chefe', setor:'Finanças & Operações'},
+  {id:'e12', nome:'Lucas Fontoura', cargo:'funcionario', setor:'Finanças & Operações'},
+  {id:'e13', nome:'Juliana Marcondes', cargo:'funcionario', setor:'Finanças & Operações'},
+  {id:'e14', nome:'Bruno Cavalcanti', cargo:'funcionario', setor:'Finanças & Operações'},
+  {id:'e15', nome:'Renata Xavier', cargo:'funcionario', setor:'Finanças & Operações'},
+
+  {id:'e16', nome:'Otávio Ramalho', cargo:'chefe', setor:'Talentos & Cultura'},
+  {id:'e17', nome:'Carla Menezes', cargo:'funcionario', setor:'Talentos & Cultura'},
+  {id:'e18', nome:'Felipe Aragão', cargo:'funcionario', setor:'Talentos & Cultura'},
+  {id:'e19', nome:'Sofia Lemos', cargo:'funcionario', setor:'Talentos & Cultura'},
+  {id:'e20', nome:'Gustavo Peixoto', cargo:'funcionario', setor:'Talentos & Cultura'},
+];
+
+const questions = [
+  {id:'q1', short:'Colaboração', text:'Minha equipe colabora bem no dia a dia.'},
+  {id:'q2', short:'Reconhecimento', text:'Meu chefe reconhece o meu trabalho.'},
+  {id:'q3', short:'Confiança no chefe', text:'Eu confio nas decisões do meu chefe direto.'},
+  {id:'q4', short:'Comunicação', text:'A comunicação dentro do time é clara e aberta.'},
+  {id:'q5', short:'Carga de trabalho', text:'Minha carga de trabalho está equilibrada.'},
+  {id:'q6', short:'Sentimento geral', text:'No geral, meu sentimento em relação à equipe é positivo.'},
+];
+
+const MIN_RESPONSES = 3;
+
+/* ---------------------------------------------------------------
+   2) ESTADO
+--------------------------------------------------------------- */
+let currentUser = null;
+let currentRatings = {};
+let charts = {bar:null, doughnut:null, line:null};
+
+/* ---------------------------------------------------------------
+   3) HELPERS
+--------------------------------------------------------------- */
+function slugify(str){
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0, behavior:'auto'});
+}
+function relativeDate(ts){
+  const diff = Date.now() - ts;
+  const day = 86400000;
+  if(diff < 3600000) return 'há poucos minutos';
+  if(diff < day) return 'hoje';
+  if(diff < 2*day) return 'ontem';
+  return Math.floor(diff/day) + ' dias atrás';
+}
+
+/* ---------------------------------------------------------------
+   4) TELA DE IDENTIFICAÇÃO
+--------------------------------------------------------------- */
+const employeeSelect = document.getElementById('employeeSelect');
+const idPreview = document.getElementById('idPreview');
+const btnEnter = document.getElementById('btnEnter');
+
+function buildRosterOptions(){
+  const setores = [...new Set(roster.map(r=>r.setor))];
+  setores.forEach(setor=>{
+    const group = document.createElement('optgroup');
+    group.label = setor;
+    roster.filter(r=>r.setor===setor).forEach(r=>{
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = r.nome + (r.cargo==='chefe' ? ' — Chefe de setor' : '');
+      group.appendChild(opt);
+    });
+    employeeSelect.appendChild(group);
+  });
+}
+buildRosterOptions();
+
+if(typeof window.storage === 'undefined'){
+  const warn = document.createElement('div');
+  warn.style.cssText = 'max-width:840px;margin:0 0 26px;padding:14px 18px;border:1px solid var(--coral);border-radius:2px;background:rgba(111,168,220,.12);color:var(--text-hi);font-size:13px;line-height:1.5;';
+  warn.innerHTML = '<b>Armazenamento indisponível.</b> Este painel salva avaliações, tarefas e senhas usando o recurso de armazenamento do artifact do Claude — ele só funciona quando o arquivo é aberto pelo preview dentro do Claude, não quando é baixado e aberto direto no navegador ou hospedado em outro lugar. Se você está vendo esta mensagem, nada será salvo.';
+  document.querySelector('#screen-identify').prepend(warn);
+}
+
+employeeSelect.addEventListener('change', ()=>{
+  const emp = roster.find(r=>r.id===employeeSelect.value);
+  if(!emp){ idPreview.innerHTML = '<span>Aguardando seleção…</span>'; btnEnter.disabled = true; return; }
+  const roleLabel = emp.cargo==='chefe'
+    ? '<span class="role-chefe">Chefe de setor</span>'
+    : '<span class="role-func">Membro da equipe</span>';
+  idPreview.innerHTML =
+    '<div class="filled">Identificado como <b>'+emp.nome+'</b></div>'+
+    '<div class="filled">Setor: <b>'+emp.setor+'</b></div>'+
+    '<div class="filled">Perfil detectado: '+roleLabel+'</div>';
+  btnEnter.disabled = false;
+});
+
+btnEnter.addEventListener('click', async ()=>{
+  const emp = roster.find(r=>r.id===employeeSelect.value);
+  if(!emp) return;
+  currentUser = emp;
+  updateWhoami();
+  const stored = await getPassword(emp.id);
+  if(stored) enterPasswordCheck(emp);
+  else enterMenu(emp);
+});
+
+/* ---------------------------------------------------------------
+   4.5) TELA DE MENU
+--------------------------------------------------------------- */
+function enterMenu(emp){
+  document.getElementById('menuNome').textContent = emp.nome.split(' ')[0];
+  document.getElementById('menuSetorLabel').textContent = emp.setor;
+  const isChefe = emp.cargo === 'chefe';
+  document.getElementById('menuSub').textContent = isChefe
+    ? 'Você está logado como gestor do setor. Escolha o que deseja acompanhar.'
+    : 'Escolha o que deseja acompanhar ou avaliar.';
+  document.getElementById('cardEquipeDesc').textContent = isChefe
+    ? 'Veja o clima anônimo da sua equipe, com gráficos por dimensão.'
+    : 'Avalie, de forma anônima, como está se sentindo com o time e o chefe.';
+  document.getElementById('cardFuncoesDesc').textContent = isChefe
+    ? 'Delegue tarefas para o time e organize sua própria agenda.'
+    : 'Veja suas tarefas pendentes, incompletas e completas, com prazos.';
+  showScreen('screen-menu');
+}
+
+document.getElementById('btnMenuBack').addEventListener('click', resetToIdentify);
+document.getElementById('cardEquipe').addEventListener('click', ()=>{
+  if(!currentUser) return;
+  if(currentUser.cargo === 'chefe') enterDashboard(currentUser.setor);
+  else enterSurvey(currentUser.setor);
+});
+document.getElementById('cardFuncoes').addEventListener('click', ()=>{
+  if(!currentUser) return;
+  enterTasks(currentUser);
+});
+document.getElementById('btnSurveyBack').addEventListener('click', ()=> enterMenu(currentUser));
+document.getElementById('btnDashboardBack').addEventListener('click', ()=> enterMenu(currentUser));
+document.getElementById('btnTasksBack').addEventListener('click', ()=> enterMenu(currentUser));
+
+function updateWhoami(){
+  const box = document.getElementById('whoamiBox');
+  const tag = document.getElementById('whoamiTag');
+  if(!currentUser){ box.style.display='none'; return; }
+  box.style.display='flex';
+  tag.textContent = (currentUser.cargo==='chefe' ? 'GESTOR · ' : 'EQUIPE · ') + currentUser.setor;
+}
+document.getElementById('btnLogout').addEventListener('click', resetToIdentify);
+document.getElementById('btnBackHome').addEventListener('click', ()=> enterMenu(currentUser));
+
+function resetToIdentify(){
+  currentUser = null;
+  currentRatings = {};
+  employeeSelect.value = '';
+  idPreview.innerHTML = '<span>Aguardando seleção…</span>';
+  btnEnter.disabled = true;
+  updateWhoami();
+  document.getElementById('pwModalOverlay').style.display = 'none';
+  showScreen('screen-identify');
+}
+
+/* ---------------------------------------------------------------
+   4.6) SENHA OPCIONAL DO PERFIL
+--------------------------------------------------------------- */
+function passwordKey(empId){ return 'senha:' + empId; }
+
+async function getPassword(empId){
+  try{
+    const r = await window.storage.get(passwordKey(empId), true);
+    return r ? JSON.parse(r.value) : null;
+  }catch(e){ return null; }
+}
+async function setStoredPassword(empId, pw){
+  try{ await window.storage.set(passwordKey(empId), JSON.stringify({hash: btoa(unescape(encodeURIComponent(pw)))}), true); }catch(e){}
+}
+async function removeStoredPassword(empId){
+  try{ await window.storage.delete(passwordKey(empId), true); }catch(e){}
+}
+function passwordMatches(stored, pw){
+  return !!stored && stored.hash === btoa(unescape(encodeURIComponent(pw)));
+}
+
+const pwCheckForm = document.getElementById('pwCheckForm');
+const pwCheckInput = document.getElementById('pwCheckInput');
+const pwCheckError = document.getElementById('pwCheckError');
+
+function enterPasswordCheck(emp){
+  pwCheckInput.value = '';
+  pwCheckError.style.display = 'none';
+  showScreen('screen-password-check');
+  setTimeout(()=>pwCheckInput.focus(), 50);
+}
+document.getElementById('btnPwCheckBack').addEventListener('click', resetToIdentify);
+pwCheckForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!currentUser) return;
+  const stored = await getPassword(currentUser.id);
+  if(passwordMatches(stored, pwCheckInput.value)){
+    enterMenu(currentUser);
+  } else {
+    pwCheckError.textContent = 'Senha incorreta. Tente novamente.';
+    pwCheckError.style.display = 'block';
+    pwCheckInput.value = '';
+    pwCheckInput.focus();
+  }
+});
+
+const pwModalOverlay = document.getElementById('pwModalOverlay');
+const pwModalSub = document.getElementById('pwModalSub');
+const pwSetForm = document.getElementById('pwSetForm');
+const pwNew = document.getElementById('pwNew');
+const pwConfirm = document.getElementById('pwConfirm');
+const pwSetError = document.getElementById('pwSetError');
+const btnPwRemove = document.getElementById('btnPwRemove');
+
+document.getElementById('btnPasswordIcon').addEventListener('click', async ()=>{
+  if(!currentUser) return;
+  const stored = await getPassword(currentUser.id);
+  pwModalSub.textContent = stored
+    ? 'Este perfil já tem uma senha definida. Você pode trocá-la ou removê-la — a senha continua opcional.'
+    : 'Defina uma senha opcional para este perfil. Se você definir uma, ela será pedida na próxima vez que alguém selecionar seu nome.';
+  btnPwRemove.style.display = stored ? 'inline-block' : 'none';
+  pwNew.value = ''; pwConfirm.value = '';
+  pwSetError.style.display = 'none';
+  pwModalOverlay.style.display = 'flex';
+  setTimeout(()=>pwNew.focus(), 50);
+});
+document.getElementById('btnPwCancel').addEventListener('click', ()=>{
+  pwModalOverlay.style.display = 'none';
+});
+pwModalOverlay.addEventListener('click', (e)=>{
+  if(e.target === pwModalOverlay) pwModalOverlay.style.display = 'none';
+});
+btnPwRemove.addEventListener('click', async ()=>{
+  if(!currentUser) return;
+  await removeStoredPassword(currentUser.id);
+  pwModalOverlay.style.display = 'none';
+});
+pwSetForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!currentUser) return;
+  const p1 = pwNew.value, p2 = pwConfirm.value;
+  if(p1.length < 4){
+    pwSetError.textContent = 'A senha deve ter pelo menos 4 caracteres.';
+    pwSetError.style.display = 'block';
+    return;
+  }
+  if(p1 !== p2){
+    pwSetError.textContent = 'As senhas digitadas não coincidem.';
+    pwSetError.style.display = 'block';
+    return;
+  }
+  await setStoredPassword(currentUser.id, p1);
+  pwModalOverlay.style.display = 'none';
+});
+
+/* ---------------------------------------------------------------
+   5) TELA DA PESQUISA (FUNCIONÁRIO)
+--------------------------------------------------------------- */
+const questionsHolder = document.getElementById('questionsHolder');
+const btnSubmitSurvey = document.getElementById('btnSubmitSurvey');
+const submitNote = document.getElementById('submitNote');
+const surveyError = document.getElementById('surveyError');
+const commentInput = document.getElementById('commentInput');
+const charCount = document.getElementById('charCount');
+
+function buildQuestions(){
+  questionsHolder.innerHTML = '';
+  questions.forEach(q=>{
+    const group = document.createElement('div');
+    group.className = 'qgroup';
+    const scaleBtns = [1,2,3,4,5].map(n=>
+      '<button type="button" data-q="'+q.id+'" data-v="'+n+'" aria-pressed="false" aria-label="Nota '+n+' de 5">'+n+'</button>'
+    ).join('');
+    group.innerHTML =
+      '<div class="qtext">'+q.text+'</div>'+
+      '<div class="scale">'+scaleBtns+'</div>'+
+      '<div class="scale-labels"><span>Discordo totalmente</span><span>Concordo totalmente</span></div>';
+    questionsHolder.appendChild(group);
+  });
+  questionsHolder.querySelectorAll('.scale button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const qid = btn.dataset.q, val = Number(btn.dataset.v);
+      currentRatings[qid] = val;
+      questionsHolder.querySelectorAll('button[data-q="'+qid+'"]').forEach(b=>{
+        b.setAttribute('aria-pressed', b.dataset.v === btn.dataset.v ? 'true' : 'false');
+      });
+      updateSubmitState();
+    });
+  });
+}
+function updateSubmitState(){
+  const answered = Object.keys(currentRatings).length;
+  submitNote.textContent = answered + ' de ' + questions.length + ' respondidas';
+  btnSubmitSurvey.disabled = answered < questions.length;
+}
+commentInput.addEventListener('input', ()=>{
+  charCount.textContent = commentInput.value.length;
+});
+
+function enterSurvey(setor){
+  currentRatings = {};
+  buildQuestions();
+  updateSubmitState();
+  commentInput.value = '';
+  charCount.textContent = '0';
+  surveyError.style.display = 'none';
+  document.getElementById('surveySetorLabel').textContent = setor;
+  showScreen('screen-survey');
+}
+
+document.getElementById('surveyForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(Object.keys(currentRatings).length < questions.length) return;
+
+  surveyError.style.display = 'none';
+  btnSubmitSurvey.disabled = true;
+  btnSubmitSurvey.textContent = 'Enviando…';
+
+  const setorSlug = slugify(currentUser.setor);
+  const entry = {
+    timestamp: Date.now(),
+    ratings: {...currentRatings},
+    comentario: commentInput.value.trim()
+  };
+  const key = 'avaliacao:' + setorSlug + ':' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+
+  try{
+    const result = await window.storage.set(key, JSON.stringify(entry), true);
+    if(!result){ throw new Error('Falha ao salvar'); }
+    btnSubmitSurvey.textContent = 'Enviar avaliação anônima';
+    btnSubmitSurvey.disabled = false;
+    showScreen('screen-thanks');
+  }catch(err){
+    surveyError.style.display = 'block';
+    surveyError.textContent = 'Não foi possível registrar sua avaliação agora. Tente novamente em instantes.';
+    btnSubmitSurvey.textContent = 'Enviar avaliação anônima';
+    btnSubmitSurvey.disabled = false;
+  }
+});
+
+/* ---------------------------------------------------------------
+   6) TELA DO PAINEL (CHEFE)
+--------------------------------------------------------------- */
+const dashboardContent = document.getElementById('dashboardContent');
+
+async function enterDashboard(setor){
+  document.getElementById('dashSetorLabel').textContent = setor;
+  showScreen('screen-dashboard');
+  await loadDashboard(setor);
+}
+
+async function loadDashboard(setor){
+  dashboardContent.innerHTML = '<div class="state-msg">Carregando respostas do setor…</div>';
+  const setorSlug = slugify(setor);
+  const prefix = 'avaliacao:' + setorSlug + ':';
+
+  let entries = [];
+  try{
+    const list = await window.storage.list(prefix, true);
+    const keys = (list && list.keys) ? list.keys : [];
+    const results = await Promise.all(keys.map(async k=>{
+      try{
+        const r = await window.storage.get(k, true);
+        return r ? JSON.parse(r.value) : null;
+      }catch(e){ return null; }
+    }));
+    entries = results.filter(Boolean);
+  }catch(err){
+    dashboardContent.innerHTML =
+      '<div class="card locked"><h3>Não foi possível carregar os dados</h3>'+
+      '<p>Houve um problema ao buscar as avaliações do setor. Tente atualizar novamente.</p>'+
+      '<button class="btn-ghost" onclick="location.reload()">Recarregar página</button></div>';
+    return;
+  }
+
+  renderDashboard(setor, entries);
+}
+
+function renderDashboard(setor, entries){
+  const count = entries.length;
+
+  if(count < MIN_RESPONSES){
+    dashboardContent.innerHTML =
+      '<div class="card locked">'+
+        '<svg class="lock-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>'+
+        '<h3>Aguardando mais respostas</h3>'+
+        '<p>Para preservar o anonimato de quem responde, os resultados só ficam visíveis quando o setor atinge pelo menos '+MIN_RESPONSES+' avaliações.</p>'+
+        '<div class="progress">'+count+' de '+MIN_RESPONSES+' respostas recebidas</div>'+
+      '</div>'+
+      '<div class="refresh-row" style="margin-top:14px;"><button class="btn-ghost" id="btnRefresh">Atualizar dados</button></div>';
+    document.getElementById('btnRefresh').addEventListener('click', ()=>loadDashboard(setor));
+    return;
+  }
+
+  // agregações
+  const averages = questions.map(q=>{
+    const vals = entries.map(e=>e.ratings[q.id]).filter(v=>typeof v === 'number');
+    const avg = vals.reduce((a,b)=>a+b,0) / (vals.length || 1);
+    return {short:q.short, avg: Math.round(avg*100)/100};
+  });
+
+  const overallVals = entries.map(e=>e.ratings['q6']).filter(v=>typeof v === 'number');
+  const overallAvg = Math.round((overallVals.reduce((a,b)=>a+b,0)/(overallVals.length||1))*100)/100;
+
+  const distCounts = [1,2,3,4,5].map(n => overallVals.filter(v=>v===n).length);
+
+  const byDate = {};
+  entries.slice().sort((a,b)=>a.timestamp-b.timestamp).forEach(e=>{
+    const label = new Date(e.timestamp).toLocaleDateString('pt-BR',{day:'2-digit', month:'2-digit'});
+    if(!byDate[label]) byDate[label] = [];
+    if(typeof e.ratings['q6'] === 'number') byDate[label].push(e.ratings['q6']);
+  });
+  const trendLabels = Object.keys(byDate);
+  const trendValues = trendLabels.map(l=>{
+    const arr = byDate[l];
+    return Math.round((arr.reduce((a,b)=>a+b,0)/(arr.length||1))*100)/100;
+  });
+
+  const comments = entries.filter(e=>e.comentario && e.comentario.length>0)
+    .sort((a,b)=>b.timestamp-a.timestamp).slice(0,12);
+
+  dashboardContent.innerHTML = `
+    <div class="refresh-row"><button class="btn-ghost" id="btnRefresh">Atualizar dados</button></div>
+    <div class="kpi-row">
+      <div class="card kpi"><div class="label">Respostas coletadas</div><div class="value gold">${count}</div></div>
+      <div class="card kpi"><div class="label">Sentimento geral médio</div><div class="value teal">${overallAvg.toFixed(2)} / 5</div></div>
+      <div class="card kpi"><div class="label">Setor</div><div class="value" style="font-size:19px;">${setor}</div></div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="card chart-card">
+        <h3>Média por dimensão</h3>
+        <div class="hint">Escala de 1 (discordo totalmente) a 5 (concordo totalmente)</div>
+        <div class="chart-holder"><canvas id="chartBar"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <h3>Distribuição do sentimento</h3>
+        <div class="hint">Notas dadas para "sentimento geral"</div>
+        <div class="chart-holder"><canvas id="chartDoughnut"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <h3>Tendência do sentimento geral</h3>
+      <div class="hint">Média diária das respostas recebidas</div>
+      <div class="chart-holder tall"><canvas id="chartLine"></canvas></div>
+    </div>
+
+    <div class="card comments-card">
+      <h3>Comentários anônimos</h3>
+      <div id="commentsList"></div>
+    </div>
+  `;
+
+  document.getElementById('btnRefresh').addEventListener('click', ()=>loadDashboard(setor));
+
+  const commentsList = document.getElementById('commentsList');
+  if(comments.length === 0){
+    commentsList.innerHTML = '<div class="empty-comments">Ninguém deixou comentário escrito ainda.</div>';
+  } else {
+    commentsList.innerHTML = comments.map(c=>
+      '<div class="comment-item">“'+c.comentario.replace(/</g,'&lt;')+'”<span class="meta">'+relativeDate(c.timestamp)+' · resposta anônima</span></div>'
+    ).join('');
+  }
+
+  renderCharts(averages, distCounts, trendLabels, trendValues);
+}
+
+function renderCharts(averages, distCounts, trendLabels, trendValues){
+  Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+  Chart.defaults.color = '#3E6690';
+
+  if(charts.bar) charts.bar.destroy();
+  if(charts.doughnut) charts.doughnut.destroy();
+  if(charts.line) charts.line.destroy();
+
+  charts.bar = new Chart(document.getElementById('chartBar'), {
+    type:'bar',
+    data:{
+      labels: averages.map(a=>a.short),
+      datasets:[{
+        data: averages.map(a=>a.avg),
+        backgroundColor:'#1B5FA8',
+        borderRadius:2,
+        maxBarThickness:34
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.formattedValue+' / 5'}}},
+      scales:{
+        y:{min:0,max:5, grid:{color:'#DCEBF9'}, ticks:{stepSize:1}},
+        x:{grid:{display:false}, ticks:{autoSkip:false, maxRotation:24, minRotation:0, font:{size:10.5}}}
+      }
+    }
+  });
+
+  charts.doughnut = new Chart(document.getElementById('chartDoughnut'), {
+    type:'doughnut',
+    data:{
+      labels:['1 — Muito baixo','2','3 — Neutro','4','5 — Muito alto'],
+      datasets:[{
+        data: distCounts,
+        backgroundColor:['#BFDAF2','#8FBBE0','#5A97CE','#2E6DAE','#0B3C74'],
+        borderColor:'#FFFFFF', borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5}}}}
+    }
+  });
+
+  charts.line = new Chart(document.getElementById('chartLine'), {
+    type:'line',
+    data:{
+      labels: trendLabels,
+      datasets:[{
+        data: trendValues,
+        borderColor:'#1B5FA8',
+        backgroundColor:'rgba(27,95,168,0.10)',
+        fill:true, tension:.3, pointBackgroundColor:'#1B5FA8', pointRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{min:0,max:5, grid:{color:'#DCEBF9'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ---------------------------------------------------------------
+   7) MINHAS FUNÇÕES (TAREFAS)
+--------------------------------------------------------------- */
+const STATUS_LABELS = {pendente:'Pendente', incompleta:'Em andamento', completa:'Concluída'};
+let editingTaskKey = null;
+
+function taskKeyPrefix(empId){ return 'tarefa:' + empId + ':'; }
+
+function escapeHtml(s){ return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+function formatPrazo(prazo){
+  if(!prazo) return 'sem prazo definido';
+  const d = new Date(prazo+'T00:00:00');
+  if(isNaN(d)) return prazo;
+  return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function isOverdue(prazo, status){
+  if(!prazo || status==='completa') return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(prazo+'T00:00:00');
+  return d < today;
+}
+
+async function fetchTasks(empId){
+  try{
+    const list = await window.storage.list(taskKeyPrefix(empId), true);
+    const keys = (list && list.keys) ? list.keys : [];
+    const results = await Promise.all(keys.map(async k=>{
+      try{
+        const r = await window.storage.get(k, true);
+        return r ? {key:k, task: JSON.parse(r.value)} : null;
+      }catch(e){ return null; }
+    }));
+    return results.filter(Boolean).sort((a,b)=> (a.task.prazo||'9999').localeCompare(b.task.prazo||'9999'));
+  }catch(err){ return null; }
+}
+async function createTask(empId, data){
+  const id = Date.now()+'-'+Math.random().toString(36).slice(2,8);
+  const key = taskKeyPrefix(empId)+id;
+  const task = {
+    id, titulo:data.titulo, descricao:data.descricao||'', prazo:data.prazo||'',
+    status:'pendente', criadoPor:data.criadoPor, criadoEm:Date.now()
+  };
+  let ok = false;
+  try{
+    const result = await window.storage.set(key, JSON.stringify(task), true);
+    ok = !!result;
+  }catch(e){ ok = false; }
+  return {key, task, ok};
+}
+async function saveTask(key, task){
+  task.atualizadoEm = Date.now();
+  let ok = false;
+  try{
+    const result = await window.storage.set(key, JSON.stringify(task), true);
+    ok = !!result;
+  }catch(e){ ok = false; }
+  return ok;
+}
+async function handleTaskAction(key, action, onChange){
+  if(action==='delete'){
+    try{ await window.storage.delete(key, true); }catch(e){}
+    onChange();
+    return;
+  }
+  let r;
+  try{ r = await window.storage.get(key, true); }catch(e){ return; }
+  if(!r) return;
+  const task = JSON.parse(r.value);
+  if(action==='advance'){ task.status = task.status==='pendente' ? 'incompleta' : 'completa'; }
+  else if(action==='revert'){ task.status = 'pendente'; }
+  else if(action==='reopen'){ task.status = 'incompleta'; }
+  await saveTask(key, task);
+  onChange();
+}
+
+function taskCardHtml(it, opts){
+  opts = opts || {};
+  const t = it.task;
+  const overdue = isOverdue(t.prazo, t.status);
+  const descHtml = t.descricao ? '<p class="desc">'+escapeHtml(t.descricao)+'</p>' : '';
+  let actions = '';
+  if(opts.showStatusActions){
+    if(t.status==='pendente') actions += '<button data-action="advance" data-key="'+it.key+'" class="primary">Iniciar</button>';
+    if(t.status==='incompleta'){
+      actions += '<button data-action="advance" data-key="'+it.key+'" class="primary">Concluir</button>';
+      actions += '<button data-action="revert" data-key="'+it.key+'">Voltar a pendente</button>';
+    }
+    if(t.status==='completa') actions += '<button data-action="reopen" data-key="'+it.key+'">Reabrir</button>';
+  }
+  if(opts.showManageActions) actions += '<button data-action="edit" data-key="'+it.key+'">Editar</button>';
+  if(opts.showDelete) actions += '<button data-action="delete" data-key="'+it.key+'">Excluir</button>';
+
+  return '<div class="card task-card">'+
+      '<span class="status-badge '+t.status+'">'+STATUS_LABELS[t.status]+'</span>'+
+      '<h4>'+escapeHtml(t.titulo)+'</h4>'+
+      descHtml+
+      '<div class="prazo'+(overdue?' atrasado':'')+'">'+(overdue?'⚠ Atrasada · ':'')+'Prazo: '+formatPrazo(t.prazo)+'</div>'+
+      (actions ? '<div class="task-actions">'+actions+'</div>' : '')+
+    '</div>';
+}
+function taskEditFormHtml(it){
+  const t = it.task;
+  return '<div class="card task-card">'+
+      '<div class="field" style="margin-bottom:10px;"><label>Título</label><input type="text" data-field="titulo" value="'+escapeAttr(t.titulo)+'"></div>'+
+      '<div class="field" style="margin-bottom:10px;"><label>Prazo</label><input type="date" data-field="prazo" value="'+(t.prazo||'')+'"></div>'+
+      '<div class="field" style="margin-bottom:10px;"><label>Notas</label><input type="text" data-field="descricao" value="'+escapeAttr(t.descricao||'')+'"></div>'+
+      '<div class="task-actions">'+
+        '<button data-action="save-edit" data-key="'+it.key+'" class="primary">Salvar</button>'+
+        '<button data-action="cancel-edit" data-key="'+it.key+'">Cancelar</button>'+
+      '</div>'+
+    '</div>';
+}
+
+async function enterTasks(emp){
+  document.getElementById('tasksSetorLabel').textContent = emp.setor;
+  editingTaskKey = null;
+  if(emp.cargo === 'chefe'){
+    document.getElementById('tasksTitle').innerHTML = 'Sua <em>agenda</em> de gestão';
+    document.getElementById('tasksSub').textContent = 'Delegue tarefas para o time e organize seus próprios lembretes.';
+  } else {
+    document.getElementById('tasksTitle').innerHTML = 'Minhas <em>funções</em>';
+    document.getElementById('tasksSub').textContent = 'Suas tarefas atribuídas, organizadas por status.';
+  }
+  showScreen('screen-tasks');
+  document.getElementById('tasksContent').innerHTML = '<div class="state-msg">Carregando tarefas…</div>';
+  if(emp.cargo === 'chefe') await renderChefeTasks(emp);
+  else await renderEmployeeTasks(emp);
+}
+
+/* ---- FUNCIONÁRIO: três colunas por status ---- */
+async function renderEmployeeTasks(emp){
+  const content = document.getElementById('tasksContent');
+  const items = await fetchTasks(emp.id);
+  if(items === null){
+    content.innerHTML = '<div class="card locked"><h3>Não foi possível carregar suas tarefas</h3><p>Tente novamente em instantes.</p><button class="btn-ghost" id="btnTasksRetry">Tentar novamente</button></div>';
+    document.getElementById('btnTasksRetry').addEventListener('click', ()=>renderEmployeeTasks(emp));
+    return;
+  }
+  const cols = {pendente:[], incompleta:[], completa:[]};
+  items.forEach(it=>{ (cols[it.task.status] || cols.pendente).push(it); });
+
+  function colHtml(key, label, arr){
+    const body = arr.length ? arr.map(it=>taskCardHtml(it,{showStatusActions:true})).join('') : '<div class="empty-col">Nenhuma tarefa aqui.</div>';
+    return '<div><div class="task-col-head"><h3>'+label+'</h3><span class="count">'+arr.length+'</span></div>'+body+'</div>';
+  }
+
+  content.innerHTML =
+    '<div class="refresh-row"><button class="btn-ghost" id="btnTasksRefresh">Atualizar</button></div>'+
+    (items.length===0 ? '<div class="empty-col">Você ainda não tem tarefas atribuídas pelo seu chefe.</div>' :
+    '<div class="task-cols">'+
+      colHtml('pendente','Pendentes', cols.pendente)+
+      colHtml('incompleta','Em andamento', cols.incompleta)+
+      colHtml('completa','Concluídas', cols.completa)+
+    '</div>');
+
+  document.getElementById('btnTasksRefresh').addEventListener('click', ()=>renderEmployeeTasks(emp));
+  content.querySelectorAll('[data-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleTaskAction(btn.dataset.key, btn.dataset.action, ()=>renderEmployeeTasks(emp)));
+  });
+}
+
+/* ---- CHEFE: delegar + agenda pessoal + acompanhamento ---- */
+async function chefeTaskAction(chefe, key, action, btn){
+  if(action==='edit'){ editingTaskKey = key; renderChefeTasks(chefe); return; }
+  if(action==='cancel-edit'){ editingTaskKey = null; renderChefeTasks(chefe); return; }
+  if(action==='save-edit'){
+    const card = btn.closest('.task-card');
+    const titulo = card.querySelector('[data-field="titulo"]').value.trim();
+    const prazo = card.querySelector('[data-field="prazo"]').value;
+    const descricao = card.querySelector('[data-field="descricao"]').value.trim();
+    if(!titulo || !prazo) return;
+    let r; try{ r = await window.storage.get(key, true); }catch(e){ return; }
+    if(!r) return;
+    const task = JSON.parse(r.value);
+    task.titulo = titulo; task.prazo = prazo; task.descricao = descricao;
+    await saveTask(key, task);
+    editingTaskKey = null;
+    renderChefeTasks(chefe);
+    return;
+  }
+  await handleTaskAction(key, action, ()=>renderChefeTasks(chefe));
+}
+
+async function renderChefeTasks(chefe){
+  const content = document.getElementById('tasksContent');
+  const team = roster.filter(r=>r.setor===chefe.setor && r.cargo==='funcionario');
+
+  const [personalItems, teamResults] = await Promise.all([
+    fetchTasks(chefe.id),
+    Promise.all(team.map(f=>fetchTasks(f.id).then(items=>({emp:f, items}))))
+  ]);
+
+  if(personalItems === null){
+    content.innerHTML = '<div class="card locked"><h3>Não foi possível carregar sua agenda</h3><p>Tente novamente em instantes.</p><button class="btn-ghost" id="btnTasksRetry">Tentar novamente</button></div>';
+    document.getElementById('btnTasksRetry').addEventListener('click', ()=>renderChefeTasks(chefe));
+    return;
+  }
+
+  const teamOptions = team.map(f=>'<option value="'+f.id+'">'+escapeHtml(f.nome)+'</option>').join('');
+
+  content.innerHTML =
+    '<div class="refresh-row"><button class="btn-ghost" id="btnTasksRefresh">Atualizar</button></div>'+
+
+    '<div class="agenda-section">'+
+      '<h2>Delegar para a equipe</h2>'+
+      '<p class="sub">Crie uma nova tarefa e escolha quem do seu setor vai executá-la.</p>'+
+      '<form class="card task-form" id="delegateForm" novalidate>'+
+        '<div class="field wide"><label for="delTitulo">Título da tarefa</label><input type="text" id="delTitulo" maxlength="80" placeholder="Ex: Revisar proposta do cliente X"></div>'+
+        '<div class="field"><label for="delFuncionario">Funcionário</label><select id="delFuncionario"><option value="" selected>Selecione…</option>'+teamOptions+'</select></div>'+
+        '<div class="field"><label for="delPrazo">Prazo</label><input type="date" id="delPrazo"></div>'+
+        '<div class="field wide"><label for="delDescricao">Descrição (opcional)</label><input type="text" id="delDescricao" maxlength="140" placeholder="Detalhes rápidos da tarefa"></div>'+
+        '<button type="submit" class="btn-primary" id="btnDelegateSubmit">Delegar tarefa</button>'+
+        '<div class="form-error" id="delegateError" style="display:none;grid-column:1/-1;"></div>'+
+      '</form>'+
+    '</div>'+
+
+    '<div class="agenda-section">'+
+      '<h2>Minha agenda pessoal</h2>'+
+      '<p class="sub">Seus próprios lembretes e afazeres — só você vê e edita, como uma agenda para não esquecer.</p>'+
+      '<form class="card task-form" id="personalForm" novalidate>'+
+        '<div class="field wide"><label for="perTitulo">O que você precisa fazer?</label><input type="text" id="perTitulo" maxlength="80" placeholder="Ex: Preparar apresentação trimestral"></div>'+
+        '<div class="field"><label for="perPrazo">Prazo</label><input type="date" id="perPrazo"></div>'+
+        '<div class="field wide"><label for="perDescricao">Notas (opcional)</label><input type="text" id="perDescricao" maxlength="140" placeholder="Detalhes rápidos"></div>'+
+        '<button type="submit" class="btn-primary" id="btnPersonalSubmit">Adicionar à agenda</button>'+
+        '<div class="form-error" id="personalError" style="display:none;grid-column:1/-1;"></div>'+
+      '</form>'+
+      '<div id="personalTasksList" style="margin-top:18px;"></div>'+
+    '</div>'+
+
+    '<div class="agenda-section">'+
+      '<h2>Acompanhamento da equipe</h2>'+
+      '<p class="sub">Tarefas delegadas, organizadas por funcionário — o status é atualizado por cada um.</p>'+
+      '<div id="teamTasksList"></div>'+
+    '</div>';
+
+  document.getElementById('btnTasksRefresh').addEventListener('click', ()=>renderChefeTasks(chefe));
+
+  // agenda pessoal
+  const personalHolder = document.getElementById('personalTasksList');
+  if(personalItems.length === 0){
+    personalHolder.innerHTML = '<div class="empty-col">Sua agenda está vazia — adicione o primeiro lembrete acima.</div>';
+  } else {
+    personalHolder.innerHTML = '<div class="assignee-tasks">' + personalItems.map(it =>
+      it.key === editingTaskKey ? taskEditFormHtml(it) : taskCardHtml(it, {showStatusActions:true, showManageActions:true, showDelete:true})
+    ).join('') + '</div>';
+  }
+
+  // acompanhamento da equipe
+  const teamHolder = document.getElementById('teamTasksList');
+  if(team.length === 0){
+    teamHolder.innerHTML = '<div class="empty-col">Não há funcionários cadastrados neste setor.</div>';
+  } else {
+    teamHolder.innerHTML = teamResults.map(({emp, items})=>{
+      let list;
+      if(items === null) list = '<div class="empty-col">Não foi possível carregar as tarefas.</div>';
+      else if(items.length === 0) list = '<div class="empty-col">Nenhuma tarefa delegada ainda.</div>';
+      else list = '<div class="assignee-tasks">' + items.map(it =>
+        it.key === editingTaskKey ? taskEditFormHtml(it) : taskCardHtml(it, {showManageActions:true, showDelete:true})
+      ).join('') + '</div>';
+      return '<div class="assignee-group"><h4>'+escapeHtml(emp.nome)+'</h4>'+list+'</div>';
+    }).join('');
+  }
+
+  content.querySelectorAll('#personalTasksList [data-action], #teamTasksList [data-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=> chefeTaskAction(chefe, btn.dataset.key, btn.dataset.action, btn));
+  });
+
+  document.getElementById('delegateForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const titulo = document.getElementById('delTitulo').value.trim();
+    const funcId = document.getElementById('delFuncionario').value;
+    const prazo = document.getElementById('delPrazo').value;
+    const descricao = document.getElementById('delDescricao').value.trim();
+    const errBox = document.getElementById('delegateError');
+    const btn = document.getElementById('btnDelegateSubmit');
+
+    if(!titulo || !funcId || !prazo){
+      errBox.textContent = 'Preencha o título, escolha o funcionário e defina um prazo antes de delegar.';
+      errBox.style.display = 'block';
+      return;
+    }
+    errBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Delegando…';
+
+    const {ok} = await createTask(funcId, {titulo, descricao, prazo, criadoPor: chefe.id});
+    if(!ok){
+      errBox.textContent = 'Não foi possível salvar a tarefa agora. Verifique sua conexão e tente novamente.';
+      errBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Delegar tarefa';
+      return;
+    }
+    renderChefeTasks(chefe);
+  });
+  document.getElementById('personalForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const titulo = document.getElementById('perTitulo').value.trim();
+    const prazo = document.getElementById('perPrazo').value;
+    const descricao = document.getElementById('perDescricao').value.trim();
+    const errBox = document.getElementById('personalError');
+    const btn = document.getElementById('btnPersonalSubmit');
+
+    if(!titulo || !prazo){
+      errBox.textContent = 'Preencha o que precisa fazer e um prazo antes de adicionar.';
+      errBox.style.display = 'block';
+      return;
+    }
+    errBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Adicionando…';
+
+    const {ok} = await createTask(chefe.id, {titulo, descricao, prazo, criadoPor: chefe.id});
+    if(!ok){
+      errBox.textContent = 'Não foi possível salvar o lembrete agora. Verifique sua conexão e tente novamente.';
+      errBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Adicionar à agenda';
+      return;
+    }
+    renderChefeTasks(chefe);
+  });
+}
+
+})();
+</script>
+</body>
+</html>
